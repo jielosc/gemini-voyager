@@ -277,4 +277,119 @@ describe('DOMContentExtractor', () => {
       );
     });
   });
+
+  describe('MathML support', () => {
+    it('preserves MathML inline formulas (sqrt, sum, fractions) inside <p>', () => {
+      const assistant = document.createElement('div');
+      assistant.innerHTML = `
+        <message-content>
+          <div class="markdown">
+            <p>The quadratic formula:
+              <math>
+                <mi>x</mi>
+                <mo>=</mo>
+                <mfrac>
+                  <mrow>
+                    <mo>-</mo>
+                    <mi>b</mi>
+                    <mo>±</mo>
+                    <msqrt>
+                      <msup><mi>b</mi><mn>2</mn></msup>
+                      <mo>-</mo>
+                      <mn>4</mn><mi>a</mi><mi>c</mi>
+                    </msqrt>
+                  </mrow>
+                  <mrow>
+                    <mn>2</mn><mi>a</mi>
+                  </mrow>
+                </mfrac>
+              </math>
+            </p>
+            <p>So the roots are real.</p>
+          </div>
+        </message-content>
+      `;
+
+      const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+
+      // MathML structure must be preserved in HTML output
+      expect(extracted.hasFormulas).toBe(true);
+      expect(extracted.html).toContain('<math');
+      expect(extracted.html).toContain('<msqrt');
+      expect(extracted.html).toContain('<mfrac');
+      expect(extracted.html).toContain('<msup');
+      expect(extracted.html).toContain('<mi>');
+      expect(extracted.html).toContain('<mo>');
+      // Regular text around math should also be preserved
+      expect(extracted.html).toContain('quadratic formula');
+      expect(extracted.text).toContain('So the roots are real.');
+      // Text content of math should be present
+      expect(extracted.text).toMatch(/b.*2.*4.*a.*c/);
+    });
+
+    it('preserves MathML as direct children of markdown container (outside <p>)', () => {
+      const assistant = document.createElement('div');
+      assistant.innerHTML = `
+        <message-content>
+          <div class="markdown">
+            <p>Here is an equation:</p>
+            <math display="block">
+              <msup>
+                <mi>e</mi>
+                <mrow>
+                  <mi>i</mi><mi>π</mi>
+                </mrow>
+              </msup>
+              <mo>+</mo>
+              <mn>1</mn>
+              <mo>=</mo>
+              <mn>0</mn>
+            </math>
+            <p>Euler's identity.</p>
+          </div>
+        </message-content>
+      `;
+
+      const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+
+      expect(extracted.hasFormulas).toBe(true);
+      expect(extracted.html).toContain('<math');
+      expect(extracted.html).toContain('<msup');
+      expect(extracted.html).toContain('<mi>e</mi>');
+      expect(extracted.html).toContain('display="block"');
+      expect(extracted.text).toContain('Here is an equation');
+      expect(extracted.text).toContain("Euler's identity");
+    });
+
+    it('sets hasFormulas flag when MathML is present', () => {
+      const assistant = document.createElement('div');
+      assistant.innerHTML = `
+        <message-content>
+          <div class="markdown">
+            <p>No math here.</p>
+            <math><msqrt><mn>2</mn></msqrt></math>
+          </div>
+        </message-content>
+      `;
+
+      const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+      expect(extracted.hasFormulas).toBe(true);
+    });
+
+    it('does not flag formulas when no MathML is present', () => {
+      const assistant = document.createElement('div');
+      assistant.innerHTML = `
+        <message-content>
+          <div class="markdown">
+            <p>Just regular text with some <strong>formatting</strong>.</p>
+            <p>And a code block: <code>const x = 1;</code></p>
+          </div>
+        </message-content>
+      `;
+
+      const extracted = DOMContentExtractor.extractAssistantContent(assistant);
+      expect(extracted.hasFormulas).toBe(false);
+      expect(extracted.html).not.toContain('<math');
+    });
+  });
 });

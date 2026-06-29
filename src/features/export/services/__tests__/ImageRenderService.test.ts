@@ -29,9 +29,32 @@ describe('ImageRenderService', () => {
     expect(toBlob).toHaveBeenCalledWith(target, expect.objectContaining({ skipFonts: true }));
   });
 
-  it('embeds fonts for math content so KaTeX radicals render correctly', async () => {
+  it('embeds fonts for KaTeX math content so radicals render correctly', async () => {
     const target = document.createElement('div');
-    target.innerHTML = '<span class="math-inline" data-math="\\sqrt{x}">sqrt</span>';
+    target.innerHTML = '<span class="math-inline" data-math="\\\\sqrt{x}">sqrt</span>';
+    const blob = new Blob(['ok'], { type: 'image/png' });
+    (toBlob as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(blob);
+
+    await renderElementToImageBlob(target);
+
+    expect(toBlob).toHaveBeenCalledWith(target, expect.objectContaining({ skipFonts: false }));
+  });
+
+  it('embeds fonts for MathML content so sqrt/radicals render correctly', async () => {
+    const target = document.createElement('div');
+    target.innerHTML = '<p><math><msqrt><mn>2</mn></msqrt></math></p>';
+    const blob = new Blob(['ok'], { type: 'image/png' });
+    (toBlob as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(blob);
+
+    await renderElementToImageBlob(target);
+
+    // Must not skip fonts when MathML is present (fonts needed for math glyphs)
+    expect(toBlob).toHaveBeenCalledWith(target, expect.objectContaining({ skipFonts: false }));
+  });
+
+  it('embeds fonts for block-level MathML (math as direct child)', async () => {
+    const target = document.createElement('div');
+    target.innerHTML = '<math display="block"><msup><mi>x</mi><mn>2</mn></msup></math>';
     const blob = new Blob(['ok'], { type: 'image/png' });
     (toBlob as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(blob);
 

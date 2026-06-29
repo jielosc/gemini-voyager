@@ -519,6 +519,17 @@ export class DOMContentExtractor {
         continue;
       }
 
+      // MathML elements as direct children of markdown container (e.g.
+      // Gemini renders inline sqrt/equations as <math><msqrt>…</msqrt></math>
+      // outside a <p> tag). Preserve outerHTML so the root symbol and other
+      // mathematical structure survives into the exported image.
+      if (DOMContentExtractor.isMathMLElement(child)) {
+        flags.hasFormulas = true;
+        htmlParts.push((child as HTMLElement).outerHTML);
+        textParts.push(this.normalizeText(child.textContent || ''));
+        continue;
+      }
+
       // Lists
       if (tagName === 'ul' || tagName === 'ol') {
         const listContent = this.extractList(child as HTMLElement);
@@ -677,6 +688,16 @@ export class DOMContentExtractor {
   /**
    * Process inline content (text with inline formulas)
    */
+  private static readonly MATHML_NS = 'http://www.w3.org/1998/Math/MathML';
+
+  private static isMathMLElement(el: Element): boolean {
+    return (
+      el.namespaceURI === this.MATHML_NS ||
+      el.tagName === 'MATH' ||
+      el.tagName === 'math'
+    );
+  }
+
   private static processInlineContent(element: HTMLElement): {
     html: string;
     text: string;
@@ -698,6 +719,18 @@ export class DOMContentExtractor {
         const el = node as Element;
 
         if (this.shouldSkipElement(el)) {
+          return;
+        }
+
+        // MathML elements — preserve outerHTML so sqrt/radicals/equations
+        // survive the SVG foreignObject serialization in html-to-image.
+        // Without this, MathML elements (msqrt, mi, mo, msup, etc.) fall
+        // through to the generic recursion that flattens them to plain
+        // text, losing the root symbol and all mathematical structure.
+        if (this.isMathMLElement(el)) {
+          hasFormulas = true;
+          htmlParts.push((el as HTMLElement).outerHTML);
+          textParts.push(this.normalizeText(el.textContent || ''));
           return;
         }
 

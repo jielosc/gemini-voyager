@@ -5,7 +5,7 @@ const TRANSPARENT_IMAGE_PLACEHOLDER =
 const DEFAULT_OFFSCREEN_LEFT = '-100000px';
 const DEFAULT_SANITIZE_SELECTOR = 'img, video, iframe, canvas, svg image';
 const DEFAULT_RENDER_WIDTH = 720;
-const MATH_RENDER_SELECTOR = '.katex, .math-inline, .math-block, [data-math]';
+const MATH_RENDER_SELECTOR = '.katex, .math-inline, .math-block, [data-math], math';
 
 /**
  * XML 1.0 §2.2 legal chars: #x9 | #xA | #xD | [#x20-#xD7FF] | [#xE000-#xFFFD] | [#x10000-#x10FFFF]
